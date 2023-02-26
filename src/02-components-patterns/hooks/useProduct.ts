@@ -1,38 +1,51 @@
-import { useEffect, useState } from 'react';
-import { onChangeArgs, Product } from '../interfaces/index';
+import { useEffect, useRef, useState } from 'react';
+import { InitialValues, onChangeArgs, Product } from '../interfaces/index';
 
 interface useProductArgs {
     product: Product;
     onChange?: ( args: onChangeArgs ) => void;
     value?: number;
+    initialValues?: InitialValues;
 }
 
-export const useProduct = ( { onChange, product, value = 0 }: useProductArgs ) => {
+export const useProduct = ( { onChange, product, value = 0, initialValues }: useProductArgs ) => {
     
-    const [counter, setCounter] = useState( value );
+    const [counter, setCounter] = useState<number>( initialValues?.count || value );
+    
+    
+    const isMounted = useRef( false );
 
-    // const isControlled = useRef( !!onChange ); version alternativa
-    
     const increaseBy = ( value: number ) => {
 
-        // if (isControlled.current) { version alternativa
-        //     return onChange!({ count: value, product })
-        // }
-        
-        const newValue = Math.max( counter + value, 0 );
-        
-        setCounter( newValue ); //incremento y decremento min valor 0
+        let newValue = Math.max( counter + value, 0 );
+        if (initialValues?.maxCount) {
+            newValue = Math.min( newValue, initialValues.maxCount )
+        }
+        setCounter( newValue );
         
         onChange && onChange( { count: newValue, product } );
     }
 
+    const reset = () => {
+        setCounter( initialValues?.count || value )
+    }
+ 
     useEffect(() => {
-        setCounter(value)
-    }, [value])
+        if ( !isMounted.current ) return;
+        setCounter( initialValues?.count || value);
+    }, [ value, initialValues ])
+
+    useEffect(() => {
+        isMounted.current = true;
+    }, [isMounted])
     
 
     return {
         counter,
-        increaseBy
+        product,
+        isMaxCountReached: !!initialValues?.count && initialValues.maxCount === counter,
+        maxCount: initialValues?.maxCount,
+        increaseBy,
+        reset,
     }
 }
